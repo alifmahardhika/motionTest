@@ -10,11 +10,19 @@ import CoreMotion
 
 class ViewController: UIViewController {
     @IBOutlet weak var gyroLabel: UILabel!
+    @IBOutlet weak var xLabel: UILabel!
+    @IBOutlet weak var yLabel: UILabel!
+    @IBOutlet weak var zLabel: UILabel!
     var motion = CMMotionManager()
     var queue = OperationQueue()
     var prevHeading = 0.0
     private let activityManager = CMMotionActivityManager()
     private let pedometer = CMPedometer()
+    var timer :  Timer?
+    var prevMaxZ: Double?
+    var prevMaxY = 0.0
+    var distance = 0.0
+    var arrAcc = [Double]()
 
     @IBOutlet weak var activityTypeLabel: UILabel!
     @IBOutlet weak var distanceLabel: UILabel!
@@ -24,7 +32,70 @@ class ViewController: UIViewController {
         print("init")
         startUpdating()
         startQueuedUpdates()
+        startAccelerometers()
         // Do any additional setup after loading the view.
+    }
+    
+    
+    func startAccelerometers() {
+        print("IN")
+       // Make sure the accelerometer hardware is available.
+       if self.motion.isAccelerometerAvailable {
+        self.motion.accelerometerUpdateInterval = 1.0 / 10.0  // 60 Hz
+          self.motion.startAccelerometerUpdates()
+
+          // Configure a timer to fetch the data.
+        self.timer = Timer(fire: Date(), interval: (1.0/10.0),
+                           repeats: true, block: { [self] (timer) in
+             // Get the accelerometer data.
+             if let data = self.motion.accelerometerData {
+                let z = data.acceleration.z
+                arrAcc.append(z)
+//                let z = data.acceleration.z
+                let x = data.acceleration.x
+                let y = data.acceleration.y
+                            
+                // Use the accelerometer data in your app.
+                
+//                USE Z BECOS KEDEPAN:
+                DispatchQueue.main.async {
+//                    PER SECOND, avg of 10 acc measurement
+                    if self.arrAcc.count == 30{
+//                        print(self.arrAcc)
+                        var avgAcc = self.arrAcc.reduce(0, +) / Double(self.arrAcc.count)
+                        self.arrAcc.removeAll()
+//                        print("AVG: \(avgAcc)")
+//                        avgAcc = avgAcc
+                        if abs(avgAcc*9.8) > 0.5 && self.activityTypeLabel.text == "Walking"{
+                            let distpersec = (abs(avgAcc*9.8) * 9) //results in movement per 1 second
+                            print("AVG: \(abs(avgAcc*9.8))")
+                            print("DIST: \(distpersec)")
+    //                        print("DIST/SEC: \(distpersec)")
+                            self.distance += distpersec
+                            self.xLabel.text = String(format: "DIST: %.3f", self.distance )
+                            self.zLabel.text = String(format: "Z: %.3f", (abs(avgAcc*9.8)))
+    //                        self.xLabel.text = String(format: "X: %.3f", x)
+    //                        self.yLabel.text = String(format: "Y: %.3f", y)
+    //                        if prevMaxY == 0 || prevMaxY < y {
+    //                            prevMaxY = y
+    //                            self.yLabel.text = String(format: "Y: %.3f", prevMaxY)
+    //                        }
+                        }
+                        else {
+                            print("stationary")
+                            self.zLabel.text = "DIEM"
+                        }
+                    }
+                }
+             }
+                    
+//                }
+//             }
+          })
+
+          // Add the timer to the current run loop.
+        RunLoop.current.add(self.timer!, forMode: .default)
+       }
     }
     
     private func startCountingSteps() {
