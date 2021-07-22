@@ -23,7 +23,8 @@ class ViewController: UIViewController {
     var prevMaxY = 0.0
     var distance = 0.0
     var arrAcc = [Double]()
-
+    var timerCounter = 0
+    
     @IBOutlet weak var activityTypeLabel: UILabel!
     @IBOutlet weak var distanceLabel: UILabel!
     
@@ -41,7 +42,7 @@ class ViewController: UIViewController {
         print("IN")
        // Make sure the accelerometer hardware is available.
        if self.motion.isAccelerometerAvailable {
-        self.motion.accelerometerUpdateInterval = 1.0 / 10.0  // 60 Hz
+        self.motion.accelerometerUpdateInterval = 1.0/10.0  // 10 Hz
           self.motion.startAccelerometerUpdates()
 
           // Configure a timer to fetch the data.
@@ -49,31 +50,45 @@ class ViewController: UIViewController {
                            repeats: true, block: { [self] (timer) in
              // Get the accelerometer data.
              if let data = self.motion.accelerometerData {
-                let z = data.acceleration.z
-                arrAcc.append(z)
-//                let z = data.acceleration.z
-                let x = data.acceleration.x
-                let y = data.acceleration.y
-                            
-                // Use the accelerometer data in your app.
+                let z = data.acceleration.z * -1 * 9.8 // m/s^2
+                let x = data.acceleration.x * -1 * 9.8
+                let y = data.acceleration.y * -1 * 9.8
+                
+                timerCounter += 1
+//                print("=======================")
+//                print("X: \(x*9.8)")
+//                print("Y: \(y*9.8)")
+//                print("Z: \(z*9.8)")
+                
+//                THRESHOLD acc max 0.7 min 0
+                if (0.4 < z && z < 0.7*9.8) {
+//                    print("YG KE APPEND: \(z)")
+//                    start sequence for valid data
+                    arrAcc.append(z)
+                }
                 
 //                USE Z BECOS KEDEPAN:
                 DispatchQueue.main.async {
-//                    PER SECOND, avg of 10 acc measurement
-                    if self.arrAcc.count == 30{
-//                        print(self.arrAcc)
+//                    PER SECOND, if udah 3 detik
+                    if self.timerCounter == 30{
+                        self.timerCounter = 0
+
                         var avgAcc = self.arrAcc.reduce(0, +) / Double(self.arrAcc.count)
                         self.arrAcc.removeAll()
 //                        print("AVG: \(avgAcc)")
-//                        avgAcc = avgAcc
-                        if abs(avgAcc*9.8) > 0.5 && self.activityTypeLabel.text == "Walking"{
-                            let distpersec = (abs(avgAcc*9.8) * 9) //results in movement per 1 second
-                            print("AVG: \(abs(avgAcc*9.8))")
+
+                        if abs(avgAcc) > 0.1 && self.activityTypeLabel.text == "Walking"{
+                            
+                            
+                            let distpersec = (abs(avgAcc) * 9) //results in movement per 3 second
+                            print("===========================")
+                            print("AVG ACCELER: \(abs(avgAcc))") //avg dalam m/s^2
                             print("DIST: \(distpersec)")
     //                        print("DIST/SEC: \(distpersec)")
                             self.distance += distpersec
+                            print("TOTAL DIST: \(self.distance)")
                             self.xLabel.text = String(format: "DIST: %.3f", self.distance )
-                            self.zLabel.text = String(format: "Z: %.3f", (abs(avgAcc*9.8)))
+                            self.zLabel.text = String(format: "Z: %.3f", (abs(avgAcc)))
     //                        self.xLabel.text = String(format: "X: %.3f", x)
     //                        self.yLabel.text = String(format: "Y: %.3f", y)
     //                        if prevMaxY == 0 || prevMaxY < y {
